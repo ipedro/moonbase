@@ -1,0 +1,23 @@
+# Ignore environment variables
+.env
+
+# Ignore WireGuard configs (contain private keys)
+wireguard/
+
+# Docker volumes
+volumes/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
