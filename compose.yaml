@@ -8,7 +8,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=America/Sao_Paulo
       - SERVERURL=auto # Will be updated by DDNS
       - SERVERPORT=51820
       - PEERS=5 # Number of client configs to generate
@@ -44,7 +44,7 @@ services:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_INCLUDE_RESTARTING=true
       - WATCHTOWER_SCHEDULE=0 0 3 * * * # 3 AM daily
-      - TZ=Europe/Berlin
+      - TZ=America/Sao_Paulo
     restart: unless-stopped
 
   portainer-agent:
@@ -74,7 +74,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+      - TZ=America/Sao_Paulo
       - PASSWORD=${CODE_SERVER_PASSWORD:-moonbase}
       - SUDO_PASSWORD=${CODE_SERVER_PASSWORD:-moonbase}
       - DEFAULT_WORKSPACE=/workspace
