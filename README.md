@@ -89,6 +89,20 @@ Remote Raspberry Pi 4 satellite deployment for VPN exit node at parents' locatio
 
 ### Router Configuration
 
+**Option 1: UPnP (Automatic - Recommended if available)**
+
+Test if router supports UPnP:
+```bash
+bash scripts/test-upnp.sh
+```
+
+If supported, the `setup.sh` script will offer to enable automatic port forwarding.
+No manual router configuration needed!
+
+**Option 2: Manual Port Forwarding**
+
+If UPnP is not available or you prefer manual control:
+
 **Port forwarding required:**
 - External Port: 51820 (UDP)
 - Internal Port: 51820 (UDP)

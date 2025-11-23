@@ -50,6 +50,30 @@ LOCAL_IP=$(hostname -I | awk '{print $1}')
 echo "📍 Pi local IP: $LOCAL_IP"
 echo ""
 
+# Test UPnP support
+echo "🔍 Testing UPnP support..."
+if bash scripts/test-upnp.sh &> /dev/null; then
+    echo "✅ UPnP detected! Automatic port forwarding will be configured."
+    echo ""
+    read -p "Enable automatic UPnP port forwarding? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # UPnP service is already uncommented in compose.yaml
+        echo "✅ UPnP service will be started"
+        UPNP_ENABLED=true
+    else
+        # Comment out UPnP service
+        sed -i '/^  upnpc:/,/^  wireguard:/{ /^  upnpc:/,/^    restart: unless-stopped$/s/^/#/; /^  wireguard:/!b; s/^#//; }' compose.yaml
+        UPNP_ENABLED=false
+    fi
+else
+    echo "⚠️  UPnP not detected. You'll need manual port forwarding."
+    # Comment out UPnP service
+    sed -i '/^  upnpc:/,/^  wireguard:/{ /^  upnpc:/,/^    restart: unless-stopped$/s/^/#/; /^  wireguard:/!b; s/^#//; }' compose.yaml
+    UPNP_ENABLED=false
+fi
+echo ""
+
 # Start services
 echo "🚀 Starting services..."
 docker compose up -d
@@ -58,7 +82,11 @@ echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "Next steps:"
-echo "1. Configure port forwarding on router: 51820/udp → $LOCAL_IP"
+if [ "${UPNP_ENABLED:-false}" = true ]; then
+    echo "✅ UPnP enabled - port forwarding is automatic!"
+else
+    echo "1. Configure port forwarding on router: 51820/udp → $LOCAL_IP"
+fi
 echo "2. Wait ~1 minute for WireGuard to generate configs"
 echo "3. Get client config: docker exec wireguard /app/show-peer 1"
 echo ""

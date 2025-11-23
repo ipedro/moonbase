@@ -1,4 +1,15 @@
 services:
+  upnpc:
+    image: alpine:latest
+    container_name: upnpc
+    network_mode: host
+    command: >
+      sh -c "apk add --no-cache miniupnpc &&
+             upnpc -a $(hostname -i) 51820 51820 UDP &&
+             echo 'UPnP port forward added: 51820/udp' &&
+             tail -f /dev/null"
+    restart: unless-stopped
+
   wireguard:
     image: linuxserver/wireguard:latest
     container_name: wireguard
