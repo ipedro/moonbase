@@ -33,6 +33,15 @@ Remote Raspberry Pi 4 satellite deployment for VPN exit node at parents' locatio
   - Exports metrics for Prometheus scraping from homelab
   - Monitor Pi health remotely
 
+- **[Code Server](https://github.com/coder/code-server)**: Web-based VS Code
+  - Port: 8443
+  - Full IDE access via browser
+  - Edit configs, check logs, debug remotely
+  
+- **[GitHub Actions Runner](https://github.com/myoung34/docker-github-actions-runner)**: Self-hosted CI/CD
+  - Automatic deployments on git push
+  - No SSH needed for updates
+
 ## Setup
 
 ### Prerequisites
@@ -60,6 +69,8 @@ Remote Raspberry Pi 4 satellite deployment for VPN exit node at parents' locatio
    ```
    CLOUDFLARE_API_TOKEN=your_api_token
    CLOUDFLARE_ZONE=yourdomain.com
+   CODE_SERVER_PASSWORD=secure_password_here
+   GITHUB_PAT=your_github_personal_access_token
    ```
 
 3. **Start services:**
@@ -136,6 +147,51 @@ AllowedIPs = 192.168.1.0/24  # Parents' local network only
 ```
 
 ## Management
+
+### Automatic Deployments (GitHub Actions)
+
+Once the GitHub runner is set up, pushes to the `main` branch automatically deploy:
+
+```bash
+# From your local machine:
+git clone https://github.com/ipedro/moonbase.git
+cd moonbase
+# Make changes...
+git commit -am "Update wireguard config"
+git push  # 🚀 Automatically deploys to the Pi!
+```
+
+**Setup GitHub Actions runner:**
+
+1. **Create GitHub Personal Access Token:**
+   - Go to: https://github.com/settings/tokens
+   - Generate new token (classic) with `repo` scope
+   - Copy the token
+
+2. **Configure secrets:**
+   ```bash
+   # From your local machine:
+   bash scripts/setup-github-secrets.sh
+   ```
+
+3. **Verify runner:**
+   - Check: https://github.com/ipedro/moonbase/settings/actions/runners
+   - Should show "moonbase-pi" as active
+
+### Remote Web IDE (Code Server)
+
+Access VS Code in your browser at `https://moonbase.yourdomain.com:8443`
+
+- Edit all config files
+- Check container logs
+- Run docker commands
+- No SSH needed
+
+**Secure it with reverse proxy** (recommended):
+- Add proxy host in Nginx Proxy Manager
+- Domain: `code.moonbase.yourdomain.com`
+- Forward to: Pi IP:8443
+- Enable SSL
 
 ### Remote Management via Portainer
 

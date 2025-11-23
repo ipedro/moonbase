@@ -1,0 +1,26 @@
+name: Deploy Moonbase
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'compose.yaml'
+      - 'scripts/deploy.sh'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Deploy to Moonbase Pi
+        run: |
+          git config --global --add safe.directory /home/pi/moonbase
+          cd /home/pi/moonbase
+          echo Configure git to use HTTPS with token
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/ipedro/moonbase.git
+          bash scripts/deploy.sh
+          echo Restore SSH remote URL
+          git remote set-url origin git@github.com:ipedro/moonbase.git

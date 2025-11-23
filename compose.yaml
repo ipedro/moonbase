@@ -67,3 +67,35 @@ services:
     volumes:
       - /:/host:ro,rslave
     restart: unless-stopped
+
+  code-server:
+    image: linuxserver/code-server:latest
+    container_name: code-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+      - PASSWORD=${CODE_SERVER_PASSWORD:-moonbase}
+      - SUDO_PASSWORD=${CODE_SERVER_PASSWORD:-moonbase}
+      - DEFAULT_WORKSPACE=/workspace
+    volumes:
+      - ./code-server/config:/config
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8443:8443"
+    restart: unless-stopped
+
+  github-runner:
+    image: myoung34/github-runner:latest
+    container_name: github-runner
+    restart: unless-stopped
+    environment:
+      - RUNNER_NAME=moonbase-pi
+      - RUNNER_WORKDIR=/tmp/runner
+      - REPO_URL=https://github.com/ipedro/moonbase
+      - RUNNER_SCOPE=repo
+      - ACCESS_TOKEN=${GITHUB_PAT}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/pi/moonbase:/home/pi/moonbase

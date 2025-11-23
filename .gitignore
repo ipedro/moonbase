@@ -4,6 +4,9 @@
 # Ignore WireGuard configs (contain private keys)
 wireguard/
 
+# Code Server data
+code-server/
+
 # Docker volumes
 volumes/
 
