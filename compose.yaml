@@ -10,6 +10,22 @@ services:
              tail -f /dev/null"
     restart: unless-stopped
 
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    hostname: moonbase
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTH_KEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_EXTRA_ARGS=--advertise-exit-node
+    volumes:
+      - ./tailscale/state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    restart: unless-stopped
+
   wireguard:
     image: linuxserver/wireguard:latest
     container_name: wireguard
@@ -79,24 +95,6 @@ services:
       - /:/host:ro,rslave
     restart: unless-stopped
 
-  code-server:
-    image: linuxserver/code-server:latest
-    container_name: code-server
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Sao_Paulo
-      - PASSWORD=${CODE_SERVER_PASSWORD:-moonbase}
-      - SUDO_PASSWORD=${CODE_SERVER_PASSWORD:-moonbase}
-      - DEFAULT_WORKSPACE=/workspace
-    volumes:
-      - ./code-server/config:/config
-      - ./:/workspace
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    ports:
-      - "8443:8443"
-    restart: unless-stopped
-
   github-runner:
     image: myoung34/github-runner:latest
     container_name: github-runner
@@ -110,3 +108,4 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/pi/moonbase:/home/pi/moonbase
+

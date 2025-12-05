@@ -1,0 +1,66 @@
+services:
+  code-server:
+    image: linuxserver/code-server:latest
+    container_name: code-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Sao_Paulo
+      - PASSWORD=${CODE_SERVER_PASSWORD:-moonbase}
+      - SUDO_PASSWORD=${CODE_SERVER_PASSWORD:-moonbase}
+      - DEFAULT_WORKSPACE=/workspace
+    volumes:
+      - ./code-server/config:/config
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8443:8443"
+    restart: unless-stopped
+
+  filebrowser:
+    image: lscr.io/linuxserver/filebrowser:latest
+    container_name: filebrowser
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./filebrowser/config:/config
+      - ${DATA_ROOT:-/home/pi/data}:/data
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=${N8N_HOST:-moonbase}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Enable public API
+      - N8N_PUBLIC_API_DISABLED=false
+      # Trust reverse proxy headers
+      - N8N_TRUST_PROXY=true
+      # Allow environment variable access in workflows
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # SQLite connection pool
+      - DB_SQLITE_POOL_SIZE=4
+      # Integration URLs (internal docker DNS)
+      - QBITTORRENT_URL=http://qbittorrent:8080
+      - SONARR_URL=http://sonarr:8989
+      - RADARR_URL=http://radarr:7878
+      # Discord webhooks
+      - DISCORD_WEBHOOK_MEDIA=${DISCORD_WEBHOOK_MEDIA}
+      - DISCORD_WEBHOOK_DOWNLOADS=${DISCORD_WEBHOOK_DOWNLOADS}
+      - DISCORD_WEBHOOK_INFRA=${DISCORD_WEBHOOK_INFRA}
+    volumes:
+      - ./n8n/data:/home/node/.n8n
+    ports:
+      - "5678:5678"

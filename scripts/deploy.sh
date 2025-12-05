@@ -29,11 +29,12 @@ git reset --hard "origin/$BRANCH"
 
 # Pull latest images
 echo "📦 [moonbase] Pulling latest images..."
-docker compose pull
+COMPOSE_FILES="-f compose.yaml -f compose.media.yaml -f compose.tools.yaml"
+docker compose $COMPOSE_FILES pull
 
 # Recreate containers
 echo "🚀 [moonbase] Restarting services..."
-docker compose up -d --remove-orphans
+docker compose $COMPOSE_FILES up -d --remove-orphans
 
 # Cleanup
 echo "🧹 [moonbase] Cleaning up unused images..."

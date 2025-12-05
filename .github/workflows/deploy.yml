@@ -1,26 +1,103 @@
-name: Deploy Moonbase
+name: Deploy to Moonbase Pi
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'compose.yaml'
+      - 'compose*.yaml'
       - 'scripts/deploy.sh'
       - '.github/workflows/deploy.yml'
-  workflow_dispatch: # Manual trigger
+      - '.env.example'
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: self-hosted
-    
+
     steps:
-      - name: Deploy to Moonbase Pi
+      - name: Deploy to Raspberry Pi
+        id: deploy
         run: |
-          git config --global --add safe.directory /home/pi/moonbase
+          # Ensure we are in the right directory
           cd /home/pi/moonbase
-          echo Configure git to use HTTPS with token
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/ipedro/moonbase.git
-          bash scripts/deploy.sh
-          echo Restore SSH remote URL
-          git remote set-url origin git@github.com:ipedro/moonbase.git
+          
+          # Run deploy script and capture output
+          # The runner is already on the Pi, so we just execute the script
+          bash scripts/deploy.sh 2>&1 | tee /tmp/deploy.log
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          cd /home/pi/moonbase
+          
+          echo "# 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed at:** $(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** [\`${GITHUB_SHA::7}\`](https://github.com/${{ github.repository }}/commit/${GITHUB_SHA})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # System Info
+          echo "## 📊 System Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Host** | $(hostname) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Uptime** | $(uptime -p | sed 's/up //') |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Load** | $(cat /proc/loadavg | cut -d' ' -f1-3) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Memory** | $(free -h | awk '/^Mem:/ {printf "%s / %s (%.0f%%)", $3, $2, $3/$2*100}') |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Disk (Root)** | $(df -h / | awk 'NR==2 {printf "%s / %s (%s)", $3, $2, $5}') |" >> $GITHUB_STEP_SUMMARY
+          # Check for external data drive if mounted
+          DATA_ROOT=$(grep DATA_ROOT .env | cut -d= -f2 || echo "/home/pi/data")
+          if [ -d "$DATA_ROOT" ]; then
+             echo "| **Disk (Data)** | $(df -h "$DATA_ROOT" | awk 'NR==2 {printf "%s / %s (%s)", $3, $2, $5}') |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Container Summary
+          echo "## 🐳 Container Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          TOTAL=$(docker ps -q | wc -l)
+          HEALTHY=$(docker ps --format '{{.Status}}' | grep -c "(healthy)" || echo "0")
+          UNHEALTHY=$(docker ps --format '{{.Status}}' | grep -c "(unhealthy)" || echo "0")
+          STARTING=$(docker ps --format '{{.Status}}' | grep -c "(health: starting)" || echo "0")
+          NO_HEALTH=$((TOTAL - HEALTHY - UNHEALTHY - STARTING))
+          
+          echo "| Status | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ✅ Healthy | $HEALTHY |" >> $GITHUB_STEP_SUMMARY
+          echo "| ❌ Unhealthy | $UNHEALTHY |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔄 Starting | $STARTING |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚪ No Health Check | $NO_HEALTH |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total Running** | **$TOTAL** |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Detailed Container List
+          echo "<details>" >> $GITHUB_STEP_SUMMARY
+          echo "<summary>📋 Container Details (click to expand)</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Container | Status | Uptime |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          docker ps --format '{{.Names}}\t{{.Status}}' | sort | while IFS=$'\t' read -r name status; do
+            # Determine emoji based on status
+            if [[ "$status" == *"(healthy)"* ]]; then
+              emoji="✅"
+            elif [[ "$status" == *"(unhealthy)"* ]]; then
+              emoji="❌"
+            elif [[ "$status" == *"(health: starting)"* ]]; then
+              emoji="🔄"
+            else
+              emoji="⚪"
+            fi
+            
+            # Extract uptime (e.g., "Up 2 hours" -> "2 hours")
+            uptime=$(echo "$status" | sed 's/ (.*)//' | sed 's/Up //')
+            health=$(echo "$status" | grep -oP '\(.*\)' || echo "")
+            
+            echo "| $name | $emoji $health | $uptime |" >> $GITHUB_STEP_SUMMARY
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY

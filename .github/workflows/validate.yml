@@ -1,0 +1,97 @@
+name: Validate Compose Files
+
+on:
+  pull_request:
+    paths:
+      - 'compose*.yaml'
+      - 'Dockerfile'
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'compose*.yaml'
+      - 'Dockerfile'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find compose files
+        id: find
+        run: |
+          # Find all compose files in the root directory
+          FILES=$(ls compose*.yaml | tr '\n' ' ')
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+          echo "Found compose files: $FILES"
+
+      - name: Validate compose syntax
+        id: validate
+        run: |
+          VALID_FILES=""
+          FAILED_FILES=""
+          
+          for file in ${{ steps.find.outputs.files }}; do
+            echo "::group::Validating $file"
+            
+            # Validate with docker compose
+            # We need to create a dummy .env file for variable substitution
+            touch .env
+            echo "CLOUDFLARE_API_TOKEN=dummy" >> .env
+            echo "CLOUDFLARE_ZONE=example.com" >> .env
+            echo "CODE_SERVER_PASSWORD=dummy" >> .env
+            echo "GITHUB_PAT=dummy" >> .env
+            echo "DATA_ROOT=/tmp" >> .env
+            
+            if docker compose -f "$file" config --quiet 2>&1; then
+              echo "✅ $file is valid"
+              VALID_FILES="$VALID_FILES $file"
+            else
+              echo "❌ $file validation failed"
+              FAILED_FILES="$FAILED_FILES $file"
+              # Print the error
+              docker compose -f "$file" config
+            fi
+            echo "::endgroup::"
+          done
+          
+          echo "valid_files=$VALID_FILES" >> $GITHUB_OUTPUT
+          echo "failed_files=$FAILED_FILES" >> $GITHUB_OUTPUT
+          
+          if [ -n "$FAILED_FILES" ]; then
+            exit 1
+          fi
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "# 🔍 Compose Validation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Count files
+          VALID_COUNT=$(echo "${{ steps.validate.outputs.valid_files }}" | wc -w)
+          FAILED_COUNT=$(echo "${{ steps.validate.outputs.failed_files }}" | wc -w)
+          
+          echo "## 📊 Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ✅ Valid | $VALID_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| ❌ Failed | $FAILED_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Failed files
+          if [ -n "${{ steps.validate.outputs.failed_files }}" ]; then
+            echo "## ❌ Failed Validation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            for file in ${{ steps.validate.outputs.failed_files }}; do
+              echo "### \`$file\`" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              docker compose -f "$file" config 2>&1 | head -20 >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            done
+          fi
