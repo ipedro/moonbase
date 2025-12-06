@@ -8,9 +8,18 @@ Remote Raspberry Pi 4 satellite deployment for VPN exit node at parents' locatio
 - Location: Parents' home network
 - Purpose: VPN exit node for geo-restricted services
 
-## Services
+## 🚀 Installation
 
-### Core Services
+### Quick Start
+Run this on the Raspberry Pi:
+```bash
+# Clone and run setup (prompts for GitHub credentials if private)
+git clone https://github.com/ipedro/moonbase.git ~/Developer/moonbase && ~/Developer/moonbase/setup.sh
+```
+
+### Manual Installation
+1. Clone the repo: `git clone https://github.com/ipedro/moonbase.git`
+2. Run Setup: `./setup.sh`
 
 - **[WireGuard](https://www.wireguard.com/)**: VPN server for secure remote access
   - Port: 51820/udp
